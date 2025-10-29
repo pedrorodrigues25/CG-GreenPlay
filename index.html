@@ -7,12 +7,42 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <canvas id="myCanvas" class="myCanvas" width="1024" height="512"></canvas>
+    <canvas id="myCanvas" class="myCanvas" width="1500" height="900"></canvas>
 
     <script>
-        const canvas = document.getElementById('myCanvas');
-        const ctx = canvas.getContext('2d');
+        const canvas = document.getElementById('myCanvas')
+        const ctx = canvas.getContext('2d')
+        const W = canvas.width , H = canvas.height
 
+        function drawLandingPage(){
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+            let imgArvores = new Image()
+            imgArvores.src = 'assets/img/arvores.png'
+
+            let imgCeu = new Image()
+            imgCeu.src = '/assets/img/ceu.png'
+
+            let imgNuvens = new Image()
+            imgNuvens.src = '/assets/img/nuvens.png'
+
+            window.onload = function() {
+                //Desenha imagem de fundo
+                ctx.drawImage(imgCeu, 0, 0, W, H)
+                ctx.drawImage(imgArvores, 0, 0, W, H)
+                ctx.drawImage(imgNuvens, 0, 0, W, H)
+
+                //Desenha retângulo semi-transparente
+                // ctx.globalAlpha = 0
+                // ctx.fillStyle = '#8F4801'
+                // ctx.roundRect(W/2 - 400, H/2 - 250, 800, 500, 20)
+                // ctx.fill()
+            }
+
+            
+        }
+
+        drawLandingPage()
         
     </script>
 </body>
