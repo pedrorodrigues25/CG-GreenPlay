@@ -14,31 +14,50 @@
         const ctx = canvas.getContext('2d')
         const W = canvas.width , H = canvas.height
 
+        // Move images to global scope
+        let imgArvores = new Image()
+        let imgCeu = new Image() 
+        let imgNuvens = new Image()
+        let playBtn = new Image()
+        let imgLogo = new Image()
+        let nuvensX = 0
+
         function drawLandingPage(){
             ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-            let imgArvores = new Image()
             imgArvores.src = 'assets/img/arvores.png'
-
-            let imgCeu = new Image()
             imgCeu.src = '/assets/img/ceu.png'
-
-            let imgNuvens = new Image()
             imgNuvens.src = '/assets/img/nuvens.png'
+            playBtn.src = '/assets/img/PlayButton.svg'
+            imgLogo.src = '/assets/img/Logo.svg'
 
-            window.onload = function() {
-                //Desenha imagem de fundo
-                ctx.drawImage(imgCeu, 0, 0, W, H)
-                ctx.drawImage(imgArvores, 0, 0, W, H)
-                ctx.drawImage(imgNuvens, 0, 0, W, H)
+            imgCeu.onload = function() {
+                // Start animation after sky loads
+                setInterval(render, 1000/24)
+            }
+        }
 
-                //Desenha retângulo semi-transparente
-                // ctx.globalAlpha = 0
-                // ctx.fillStyle = '#8F4801'
-                // ctx.roundRect(W/2 - 400, H/2 - 250, 800, 500, 20)
-                // ctx.fill()
+        function render(){
+            // Clear canvas
+            ctx.clearRect(0, 0, W, H)
+            
+            // Draw layers in order: sky, clouds, trees
+            ctx.drawImage(imgCeu, 0, 0, W, H)
+            
+            // Draw moving clouds
+            ctx.drawImage(imgNuvens, nuvensX, 0, W, H)
+            ctx.drawImage(imgNuvens, nuvensX - W, 0, W, H)
+            
+            ctx.drawImage(imgArvores, 0, 0, W, H)
+            
+            // Update cloud position
+            nuvensX += 2
+            if (nuvensX >= W) {
+                nuvensX = 0
             }
 
+            ctx.drawImage(imgLogo, W/2 - 392.5, 270)
+            ctx.drawImage(playBtn, W/2 - 157, 600) 
             
         }
 
