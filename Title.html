@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jersey+10&display=swap" rel="stylesheet">
+    <title>Banner</title>
+
+    <style>
+        body {
+            font-family: "Jersey 10", sans-serif;
+            background-color:aquamarine;
+        }
+
+        .banner {
+            color: white;
+            font-size: 200px;
+            margin: 400px auto;
+            margin-bottom: 0px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            width: 800px;
+            height: 140px;
+            background: #103D10;
+            clip-path: polygon(
+                8px 0, calc(100% - 8px) 0,
+                calc(100% - 8px) 8px, 100% 8px,
+                100% calc(100% - 8px), calc(100% - 8px) calc(100% - 8px),
+                calc(100% - 8px) 100%, 8px 100%,
+                8px calc(100% - 8px), 0 calc(100% - 8px),
+                0 8px, 8px 8px
+            );
+        }
+
+        #play_btn {
+            background-image: url(testImages/playBtn.png);
+            width: 250px;
+            height: 90px;
+            font-family: "Jersey 10", sans-serif;
+            color: #103D10;
+            font-size: 80px;
+            margin: 50px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: none;
+            background-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div class="banner">GREENPLAY</div>
+    <button id="play_btn">JOGAR</button>
+</body>
+</html>

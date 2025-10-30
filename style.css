@@ -1,4 +1,5 @@
 #myCanvas {
+    font-family: "Jersey 10", sans-serif;
     display: block;
     margin:  auto;
     margin-top: 25px;
@@ -6,5 +7,45 @@
 }
 
 body{
+    font-family: "Jersey 10", sans-serif;
     background-color: #382117;
+}
+
+.banner {
+    position: absolute;
+    color: white;
+    font-size: 200px;
+    margin: 400px auto;
+    margin-bottom: 0px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    width: 800px;
+    height: 140px;
+    background: #103D10;
+    clip-path: polygon(
+        8px 0, calc(100% - 8px) 0,
+        calc(100% - 8px) 8px, 100% 8px,
+        100% calc(100% - 8px), calc(100% - 8px) calc(100% - 8px),
+        calc(100% - 8px) 100%, 8px 100%,
+        8px calc(100% - 8px), 0 calc(100% - 8px),
+        0 8px, 8px 8px
+    );
+}
+
+#play_btn {
+    position: absolute;
+    background-image: url(testImages/playBtn.png);
+    width: 250px;
+    height: 90px;
+    font-family: "Jersey 10", sans-serif;
+    color: #103D10;
+    font-size: 80px;
+    margin: 50px auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: none;
+    background-color: transparent;
 }
