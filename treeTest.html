@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&display=swap" rel="stylesheet">
+<title>Árvore em Crescimento com Fundo</title>
+<style>
+    .jersey-10-regular {
+        font-family: "Jersey 10", sans-serif;
+        font-weight: 400;
+        font-style: normal;
+    }
+    body {
+        font-family: "Jersey 10", sans-serif;
+        background-color: #87ceeb;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+    canvas {
+        background-color: #d1f0c0;
+        border: 2px solid #333;
+        image-rendering: pixelated;
+    }
+    #controle {
+        font-size: x-large;
+        position: fixed;
+        text-align: center;
+        margin: 0 auto;
+        background: rgba(255,255,255,0.8);
+        padding: 20px;
+        border-radius: 10px;
+        font-family: monospace;
+    }
+    button {
+        font-family: "Jersey 10", sans-serif;
+        font-size: xx-large;
+        margin-top: 8px;
+        padding: 4px 10px;
+        background: #4caf50;
+        border: none;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+    button:hover {
+        background: #3d8b40;
+    }
+</style>
+</head>
+<body>
+<div id="controle">
+  <label class="jersey-10-regular" style="font-size: xx-large;">Nível de Solo: <span id="nivelValor">0</span></label>
+  <br>
+  <button id="btnAumentar">Aumentar nível</button>
+</div>
+<canvas id="canvas" width="1200" height="800"></canvas>
+
+<script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const nivelValor = document.getElementById("nivelValor");
+    const btnAumentar = document.getElementById("btnAumentar");
+
+    let nivel_solo = 0;
+
+    const fundo = new Image();
+    fundo.src = "testImage/background.png";
+    fundo.onload = () => desenharArvore();
+
+    function desenharGotaLateral(x, y, angulo, lado = 1) {
+        const gotaComprimento = 50;
+        const gotaLargura = 40;
+        const deslocamento = 20 * lado;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((-angulo * Math.PI) / 180);
+        ctx.translate(deslocamento, 0);
+        const tonalidade = Math.floor(100 + Math.random() * 50);
+        ctx.fillStyle = `rgb(0, ${tonalidade}, 0)`;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(gotaLargura / 2, -gotaComprimento / 2, 0, -gotaComprimento);
+        ctx.quadraticCurveTo(-gotaLargura / 2, -gotaComprimento / 2, 0, 0);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function desenharGalho(galho) {
+        const { x, y, comprimento, angulo, largura } = galho;
+        const x2 = x + comprimento * Math.cos((angulo * Math.PI) / 180);
+        const y2 = y - comprimento * Math.sin((angulo * Math.PI) / 180);
+        const corGalho = comprimento < 10 ? "#0B4019" : "#382117";
+        if (corGalho === "#382117") {
+            ctx.lineWidth = largura + 12;
+            ctx.strokeStyle = "#21140E";
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+        ctx.lineWidth = largura;
+        ctx.strokeStyle = corGalho;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        if (comprimento < 30) {
+            desenharGotaLateral(x2, y2, angulo, -1);
+            desenharGotaLateral(x2, y2, angulo, 1);
+        }
+        return { x2, y2 };
+    }
+
+    function desenharArvore() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (fundo.complete) ctx.drawImage(fundo, 0, 0, canvas.width, canvas.height);
+        const base = { x: 950, y: 700 };
+        const nivelAtual = Math.floor(nivel_solo / 3);
+        let galhos = [
+            { x: base.x, y: base.y, comprimento: 80, angulo: 90, largura: 20, nivel: 0 }
+        ];
+        for (let n = 0; n <= nivelAtual; n++) {
+            let novosGalhos = [];
+            for (const galho of galhos) {
+                const ponta = desenharGalho(galho);
+                if (n < nivelAtual) {
+                    const separacao = 40;
+                    const angEsq = galho.angulo + separacao / 2 + (Math.random() * 6 - 3);
+                    const angDir = galho.angulo - separacao / 2 + (Math.random() * 6 - 3);
+                    const novoComprimento = galho.comprimento * 0.7;
+                    const novaLargura = Math.max(2, galho.largura * 0.7);
+                    novosGalhos.push({
+                        x: ponta.x2,
+                        y: ponta.y2,
+                        comprimento: novoComprimento,
+                        angulo: angEsq,
+                        largura: novaLargura,
+                        nivel: galho.nivel + 1
+                    });
+                    novosGalhos.push({
+                        x: ponta.x2,
+                        y: ponta.y2,
+                        comprimento: novoComprimento,
+                        angulo: angDir,
+                        largura: novaLargura,
+                        nivel: galho.nivel + 1
+                    });
+                }
+            }
+            galhos = novosGalhos;
+        }
+    }
+
+    btnAumentar.addEventListener("click", () => {
+        nivel_solo++;
+        nivelValor.textContent = nivel_solo;
+        desenharArvore();
+    });
+
+    desenharArvore();
+</script>
+</body>
+</html>
