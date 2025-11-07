@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <title>GreenPlay Demo</title>
+
+    <!-- libs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.10/p5.min.js"></script>
+    <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jersey+10&display=swap" rel="stylesheet">
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #87ceeb;
+        font-family: "Jersey 10", sans-serif;
+      }
+      #gameover {
+        display: none;
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 64px;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 30px 60px;
+        border: 4px solid #f00;
+        color: #f00;
+        border-radius: 12px;
+      }
+      canvas {
+        border: 2px solid #333;
+        background-color: #d1f0c0;
+        display: block;
+        margin: 0 auto;
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="gameover">GAME OVER</div>
+
+    <script>
+        // ------------------- VARIÁVEIS GERAIS -------------------
+        let p5Canvas, ctx;
+        let video, faceMesh, faces = [];
+        let objetos = [], animacoes = [], lixoPilha = [];
+
+        let pontos = 0, desperdicio = 0, nivelSolo = 0;
+
+        const canvasW = 1200, canvasH = 800;
+        const videoW = 500, videoH = 725;
+
+        const lixoX = 580, lixoY = 500, lixoW = 230, lixoH = 230;
+
+        let fundo, trashBack, trashImg;
+        let imagensAlimento = [], imagensCompostagem = [], imagensLixo = [];
+
+        const options = { maxFaces: 1, refineLandmarks: false, flipHorizontal: true };
+
+        // ------------------- VARIÁVEIS DE COR DAS FOLHAS -------------------
+        let folhas = []; // armazena tonalidades das folhas
+        let tonalidadeBase = 140; // base inicial do verde
+        let ultimoNivelSolo = 0;
+
+        // ------------------- PRELOAD -------------------
+        function preload() {
+            faceMesh = ml5.faceMesh(options);
+
+            fundo = loadImage("testImages/background.png");
+            trashBack = loadImage("testImages/trashBack.png");
+            trashImg = loadImage("testImages/trash.png");
+
+            for (let i = 1; i <= 3; i++) {
+                loadImage("testImages/alimento" + i + ".png", img => imagensAlimento.push(img));
+                loadImage("testImages/compostagem" + i + ".png", img => imagensCompostagem.push(img));
+                loadImage("testImages/lixo" + i + ".png", img => imagensLixo.push(img));
+            }
+        }
+
+        // ------------------- SETUP -------------------
+        function setup() {
+            createCanvas(canvasW, canvasH);
+            ctx = drawingContext;
+            video = createCapture(VIDEO);
+            video.size(videoW, videoH);
+            video.hide();
+            faceMesh.detectStart(video, gotFaces);
+            for (let i = 0; i < 4; i++) criaObjeto();
+            setInterval(criaObjeto, 2000);
+        }
+
+        // ------------------- DRAW -------------------
+        function draw() {
+            background(200);
+            if (fundo) image(fundo, canvasW/2, canvasH/2, canvasW, canvasH);
+
+            // vídeo espelhado
+            push();
+            translate(videoW, 0);
+            scale(-1, 1);
+            image(video, 225, 375, videoW, videoH);
+            pop();
+
+            noFill();
+            stroke(100);
+            rect(25, 12, videoW, videoH);
+
+            if (trashBack) image(trashBack, 700, 620, lixoW, lixoH);
+
+            // pilha do lixo
+            imageMode(CENTER);
+            for (let i = 0; i < lixoPilha.length; i++) {
+                const item = lixoPilha[i];
+                const baseY = lixoY + lixoH - 30 - i * 40;
+                if (item.img) image(item.img, lixoX + lixoW / 2, baseY, 40, 40);
+                else drawPlaceholder(lixoX + lixoW / 2, baseY, 40, item.id);
+            }
+
+            if (trashImg) image(trashImg, 700, 620, lixoW, lixoH);
+
+            // objetos caindo
+            for (let obj of objetos) {
+                push();
+                translate(obj.x, obj.y);
+                rotate(obj.rot);
+                if (obj.img) image(obj.img, 0, 0, 50, 50);
+                else drawPlaceholder(0, 0, 48, obj.id);
+                pop();
+                obj.y += obj.vel;
+                obj.rot += 0.02;
+            }
+
+            // animações
+            for (let i = animacoes.length - 1; i >= 0; i--) {
+                const a = animacoes[i];
+                a.progress += 0.03;
+                const t = constrain(a.progress, 0, 1);
+                const x = lerp(a.x0, a.x1, t);
+                const y = lerp(a.y0, a.y1, t) - sin(t * PI) * 80;
+                const rot = a.angulo + t * TWO_PI;
+                push();
+                translate(x, y);
+                rotate(rot);
+                imageMode(CENTER);
+                if (a.img) image(a.img, 0, 0, 50, 50);
+                else drawPlaceholder(0, 0, 48, a.id);
+                pop();
+
+                if (t >= 1) {
+                    lixoPilha.push({ img: a.img, id: a.id });
+                    if (a.id === "ob_lixo") pontos += 10;
+                    else desperdicio += 15;
+                    animacoes.splice(i, 1);
+                }
+            }
+
+            // FaceMesh
+            if (faces.length > 0 && faces[0].lips) {
+                const lips = faces[0].lips;
+                if (!this.lipsSuave) this.lipsSuave = { x: lips.x, y: lips.y, w: lips.width, h: lips.height };
+                this.lipsSuave.x = lerp(this.lipsSuave.x, lips.x, 0.2);
+                this.lipsSuave.y = lerp(this.lipsSuave.y, lips.y, 0.2);
+                this.lipsSuave.w = lerp(this.lipsSuave.w, lips.width, 0.2);
+                this.lipsSuave.h = lerp(this.lipsSuave.h, lips.height, 0.2);
+
+                const lx = this.lipsSuave.x;
+                const ly = this.lipsSuave.y;
+                const lw = this.lipsSuave.w;
+                const lh = this.lipsSuave.h;
+
+                const bocaAberta = lh > 25;
+
+                noFill();
+                stroke(bocaAberta ? color(0, 255, 0) : color(180, 0, 255));
+                strokeWeight(3);
+                rect(lx + 20, ly, lw, lh);
+
+                if (bocaAberta) {
+                    for (let i = objetos.length - 1; i >= 0; i--) {
+                        const obj = objetos[i];
+                        if (obj.x > lx && obj.x < lx + lw && obj.y > ly && obj.y < ly + lh) {
+                            if (obj.id === "ob_alimento") {
+                                pontos += 10;
+                                objetos.splice(i, 1);
+                            } else if (obj.id === "ob_compostagem" || obj.id === "ob_lixo") {
+                                gameOver();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // objetos que atingem o fundo
+            for (let i = objetos.length - 1; i >= 0; i--) {
+                const obj = objetos[i];
+                if (obj.y > videoH + 20) {
+                    if (obj.id === "ob_compostagem") nivelSolo++;
+                    if (obj.id === "ob_lixo") nivelSolo--;
+                    if (obj.id === "ob_alimento") desperdicio += 15;
+                    objetos.splice(i, 1);
+                }
+            }
+
+            // controla as cores das folhas quando o nível muda
+            atualizarCoresFolhas();
+
+            mostraHUD();
+            desenharArvore();
+        }
+
+        // ------------------- FUNÇÕES AUXILIARES -------------------
+        function gotFaces(results) { faces = results; }
+
+        function criaObjeto() {
+            const tipos = [
+                { id: "ob_alimento", lista: imagensAlimento },
+                { id: "ob_compostagem", lista: imagensCompostagem },
+                { id: "ob_lixo", lista: imagensLixo },
+            ];
+            const tipo = random(tipos);
+            objetos.push({
+                id: tipo.id,
+                img: random(tipo.lista),
+                x: random(videoW - 40) + 40,
+                y: 0,
+                vel: random(1.5, 3),
+                rot: random(TWO_PI),
+            });
+        }
+
+        function mousePressed() {
+            for (let i = objetos.length - 1; i >= 0; i--) {
+                const obj = objetos[i];
+                const d = dist(mouseX, mouseY, obj.x, obj.y);
+                if (d < 30) {
+                    jogaNoLixoAnimado(obj);
+                    objetos.splice(i, 1);
+                    break;
+                }
+            }
+        }
+
+        function jogaNoLixoAnimado(obj) {
+            const destinoX = lixoX + lixoW / 2;
+            const destinoY = lixoY + lixoH - lixoPilha.length * 40 - 40;
+            animacoes.push({
+                img: obj.img,
+                id: obj.id,
+                x0: obj.x,
+                y0: obj.y,
+                x1: destinoX,
+                y1: destinoY,
+                progress: 0,
+                angulo: random(TWO_PI),
+            });
+        }
+
+        function mostraHUD() {
+            noStroke();
+            fill(0);
+            textSize(24);
+            textAlign(LEFT);
+            text(`Pontos: ${pontos}`, 30, 40);
+            text(`Desperdício: ${desperdicio}`, 30, 70);
+            text(`Nível do Solo: ${nivelSolo}`, 30, 100);
+        }
+
+        function gameOver() {
+            noLoop();
+            document.getElementById("gameover").style.display = "block";
+        }
+
+        function drawPlaceholder(x, y, size, id) {
+            push();
+            translate(x, y);
+            rectMode(CENTER);
+            fill(120);
+            noStroke();
+            rect(0, 0, size, size, 6);
+            fill(255);
+            textAlign(CENTER, CENTER);
+            textSize(size / 3);
+            if (id === "ob_alimento") text("A", 0, 0);
+            else if (id === "ob_compostagem") text("C", 0, 0);
+            else if (id === "ob_lixo") text("#", 0, 0);
+            pop();
+        }
+
+        // ------------------- GESTÃO DE CORES DAS FOLHAS -------------------
+        function atualizarCoresFolhas() {
+            if (nivelSolo > ultimoNivelSolo) {
+                tonalidadeBase = (tonalidadeBase + 10) % 255;
+                // recria folhas fixas, com posições e cores determinadas
+                folhas = [];
+                for (let i = 0; i < 400; i++) {
+                    folhas.push({
+                        x: random(800, 1000),          // posição horizontal da copa
+                        y: random(200, 500),           // posição vertical
+                        r: 0,
+                        g: tonalidadeBase + random(30),
+                        b: 0
+                    });
+                }
+                cacheFolhas = [...folhas];
+            } else if (nivelSolo < ultimoNivelSolo) {
+                // 5% das folhas amarelam
+                for (let i = 0; i < folhas.length; i++) {
+                    if (random() < 0.05) {
+                        folhas[i] = { 
+                            ...folhas[i],
+                            r: 180 + random(40), 
+                            g: 120 + random(40), 
+                            b: 0 
+                        };
+                    }
+                }
+            }
+            ultimoNivelSolo = nivelSolo;
+        }
+
+        // ------------------- ÁRVORE -------------------
+        function desenharGotaLateral(x, y, angulo, lado = 1) {
+            const gotaComprimento = 50;
+            const gotaLargura = 40;
+            const deslocamento = 20 * lado;
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate((-angulo * Math.PI) / 180);
+            ctx.translate(deslocamento, 0);
+            // seleciona uma folha fixa
+            const folha = folhas[int(random(folhas.length))];
+            if (folha) {
+                ctx.fillStyle = `rgb(${folha.r}, ${folha.g}, ${folha.b})`;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(gotaLargura / 2, -gotaComprimento / 2, 0, -gotaComprimento);
+                ctx.quadraticCurveTo(-gotaLargura / 2, -gotaComprimento / 2, 0, 0);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function desenharGalho(galho) {
+            const { x, y, comprimento, angulo, largura } = galho;
+            const x2 = x + comprimento * Math.cos((angulo * Math.PI) / 180);
+            const y2 = y - comprimento * Math.sin((angulo * Math.PI) / 180);
+            const corGalho = comprimento < 10 ? "#0B4019" : "#382117";
+
+            // sombra grossa
+            if (corGalho === "#382117") {
+                ctx.lineWidth = largura + 12;
+                ctx.strokeStyle = "#21140E";
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+
+            // tronco principal
+            ctx.lineWidth = largura;
+            ctx.strokeStyle = corGalho;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            if (comprimento < 30) {
+                desenharGotaLateral(x2, y2, angulo, -1);
+                desenharGotaLateral(x2, y2, angulo, 1);
+            }
+
+            return { x2, y2 };
+        }
+
+        let cacheGalhos = [];
+        let cacheNivel = -1;
+        let folhasFixas = [];
+        let ultimaCorBase = 140;
+
+        // gera folhas novas só quando o nível do solo muda
+        function atualizarFolhasSeNecessario() {
+        const corBase = 140 + nivelSolo * 5; // cada nível = tom mais intenso
+        if (nivelSolo !== cacheNivel) {
+                if (nivelSolo > cacheNivel) {
+                // crescer árvore e renovar folhas verdes
+                folhasFixas = [];
+                for (let i = 0; i < 200; i++) {
+                        folhasFixas.push({
+                        x: random(-60, 60),
+                        y: random(-200, -30),
+                        r: 0,
+                        g: constrain(corBase + random(-10, 20), 0, 255),
+                        b: 0,
+                        });
+                    }
+                } else if (nivelSolo < cacheNivel) {
+                    // amarelar 5% das folhas
+                    for (let i = 0; i < folhasFixas.length; i++) {
+                        if (random() < 0.05) {
+                        folhasFixas[i].r = 180 + random(40);
+                        folhasFixas[i].g = 120 + random(40);
+                        folhasFixas[i].b = 0;
+                        }
+                    }
+                }
+                cacheNivel = nivelSolo;
+            }
+        }
+
+        // folhas laterais (usando folhas fixas)
+        function desenharGotaLateral(x, y, angulo, lado = 1) {
+            const gotaComprimento = 50;
+            const gotaLargura = 40;
+            const deslocamento = 20 * lado;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate((-angulo * Math.PI) / 180);
+            ctx.translate(deslocamento, 0);
+            const folha = random(folhasFixas);
+            if (folha) {
+                ctx.fillStyle = `rgb(${folha.r}, ${folha.g}, ${folha.b})`;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(gotaLargura / 2, -gotaComprimento / 2, 0, -gotaComprimento);
+                ctx.quadraticCurveTo(-gotaLargura / 2, -gotaComprimento / 2, 0, 0);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        // árvore principal
+        function desenharArvore() {
+        atualizarFolhasSeNecessario(); // só altera quando o nível muda
+
+        const nivelAtual = Math.floor(nivelSolo / 3);
+        if (nivelAtual !== cacheNivel || cacheGalhos.length === 0) {
+            cacheGalhos = [];
+            const base = { x: 900, y: 700 };
+            let galhos = [
+            { x: base.x, y: base.y, comprimento: 80, angulo: 90, largura: 20, nivel: 0 },
+            ];
+            for (let n = 0; n <= nivelAtual; n++) {
+                let novosGalhos = [];
+                for (const galho of galhos) {
+                    const ponta = desenharGalho(galho);
+                    if (n < nivelAtual) {
+                    const separacao = 40;
+                    const angEsq = galho.angulo + separacao / 2;
+                    const angDir = galho.angulo - separacao / 2;
+                    const novoComprimento = galho.comprimento * 0.7;
+                    const novaLargura = Math.max(2, galho.largura * 0.7);
+                    novosGalhos.push({
+                        x: ponta.x2,
+                        y: ponta.y2,
+                        comprimento: novoComprimento,
+                        angulo: angEsq,
+                        largura: novaLargura,
+                        nivel: galho.nivel + 1,
+                    });
+                    novosGalhos.push({
+                            x: ponta.x2,
+                            y: ponta.y2,
+                            comprimento: novoComprimento,
+                            angulo: angDir,
+                            largura: novaLargura,
+                            nivel: galho.nivel + 1,
+                        });
+                    }
+                    cacheGalhos.push(galho);
+                }
+                galhos = novosGalhos;
+            }
+        }
+
+        for (const g of cacheGalhos) desenharGalho(g);
+    }
+
+
+    </script>
+  </body>
+</html>

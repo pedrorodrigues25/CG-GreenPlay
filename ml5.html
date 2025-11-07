@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Jogo FaceMesh com Imagens (carregamento simples)</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.10/p5.min.js"></script>
+    <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        background: #222;
+        color: white;
+        font-family: Arial, sans-serif;
+      }
+      #gameover {
+        display: none;
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 48px;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 20px 40px;
+        border: 2px solid #f00;
+        color: #f00;
+      }
+      /* dica visual para dev: se as imagens não carregarem, verifique console e caminho */
+    </style>
+  </head>
+  <body>
+    <div id="gameover">GAME OVER</div>
+
+    <script>
+      let video;
+      let faceMesh;
+      let faces = [];
+
+      let objetos = [];
+      let animacoes = [];
+      let lixoPilha = [];
+
+      let pontos = 0,
+        desperdicio = 0,
+        nivelSolo = 0;
+
+      const canvasW = 1200,
+        canvasH = 800;
+      const videoW = 500,
+        videoH = 600;
+
+      const lixoW = 100,
+        lixoH = 600;
+      const lixoX = canvasW - lixoW - 20;
+      const lixoY = canvasH - lixoH - 20;
+
+      // Imagens (arrays)
+      let imagensAlimento = [];
+      let imagensCompostagem = [];
+      let imagensLixo = [];
+
+      // opcoes faceMesh (flipHorizontal true para coordenadas espelhadas)
+      let options = { maxFaces: 1, refineLandmarks: false, flipHorizontal: true };
+
+      // ---------- PRELOAD: carrega modelo e imagens de forma simples ----------
+      function preload() {
+        // inicializa faceMesh (ml5 v1)
+        faceMesh = ml5.faceMesh(options);
+
+        // carrega 3 imagens por categoria; em caso de falha, push null (placeholder)
+        for (let i = 1; i <= 3; i++) {
+          const aPath = "testImages/alimento" + i + ".png";
+          loadImage(
+            aPath,
+            (img) => imagensAlimento.push(img),
+            (err) => {
+              console.warn("Falha a carregar", aPath);
+              imagensAlimento.push(null);
+            }
+          );
+
+          const cPath = "testImages/compostagem" + i + ".png";
+          loadImage(
+            cPath,
+            (img) => imagensCompostagem.push(img),
+            (err) => {
+              console.warn("Falha a carregar", cPath);
+              imagensCompostagem.push(null);
+            }
+          );
+
+          const lPath = "testImages/lixo" + i + ".png";
+          loadImage(
+            lPath,
+            (img) => imagensLixo.push(img),
+            (err) => {
+              console.warn("Falha a carregar", lPath);
+              imagensLixo.push(null);
+            }
+          );
+        }
+      }
+
+      // ---------- SETUP ----------
+      function setup() {
+        createCanvas(canvasW, canvasH);
+
+        // vídeo (escondemos elemento real — desenhamos via image() no canvas)
+        video = createCapture(VIDEO);
+        video.size(videoW, videoH);
+        video.hide();
+
+        // inicia detecção faceMesh (quando o vídeo já estiver disponível)
+        faceMesh.detectStart(video, gotFaces);
+
+        for (let i = 0; i < 4; i++) criaObjeto();
+        setInterval(criaObjeto, 2000);
+      }
+
+      // ---------- DRAW (loop) ----------
+      function draw() {
+        background(25);
+
+        // desenha o vídeo espelhado no canto superior esquerdo
+        push();
+        translate(videoW, 0);
+        scale(-1, 1);
+        image(video, 250, 300, videoW, videoH);
+        pop();
+
+        // moldura do vídeo
+        noFill();
+        stroke(100);
+        rect(0, 0, videoW, videoH);
+
+        // área do lixo (dentro do canvas)
+        fill(40);
+        stroke(200);
+        rect(lixoX, lixoY, lixoW, lixoH);
+
+        // desenha pilha do lixo (de baixo para cima)
+        imageMode(CENTER);
+        for (let i = 0; i < lixoPilha.length; i++) {
+          const item = lixoPilha[i];
+          const itemY = lixoY + lixoH - 40 - i * 50;
+          if (item.img) {
+            image(item.img, lixoX + lixoW / 2, itemY, 40, 40);
+          } else {
+            // placeholder simples
+            drawPlaceholder(lixoX + lixoW / 2, itemY, 40, item.id);
+          }
+        }
+
+        // desenha objetos caindo (imagem ou placeholder)
+        for (let obj of objetos) {
+          imageMode(CENTER);
+          if (obj.img) image(obj.img, obj.x, obj.y, 50, 50);
+          else drawPlaceholder(obj.x, obj.y, 48, obj.id);
+          obj.y += obj.vel;
+        }
+
+        // animações (objeto voando até o lixo)
+        for (let i = animacoes.length - 1; i >= 0; i--) {
+          const a = animacoes[i];
+          a.progress += 0.03;
+          const t = constrain(a.progress, 0, 1);
+
+          const x = lerp(a.x0, a.x1, t);
+          // arco: subtrai uma parábola para dar elevação
+          const y = lerp(a.y0, a.y1, t) - sin(t * PI) * 80;
+          const rot = a.angulo + t * TWO_PI;
+
+          push();
+          translate(x, y);
+          rotate(rot);
+          imageMode(CENTER);
+          if (a.img) image(a.img, 0, 0, 50, 50);
+          else drawPlaceholder(0, 0, 48, a.id);
+          pop();
+
+          if (t >= 1) {
+            lixoPilha.push({ img: a.img, id: a.id });
+            if (a.id === "ob_lixo") pontos += 10;
+            else desperdicio += 15;
+            animacoes.splice(i, 1);
+          }
+        }
+
+        // FaceMesh - região da boca (se disponível)
+        if (faces.length > 0 && faces[0].lips) {
+          const lips = faces[0].lips;
+          const x = lips.x;
+          const y = lips.y;
+          const w = lips.width;
+          const h = lips.height;
+
+          noFill();
+          stroke(180, 0, 255);
+          strokeWeight(3);
+          rect(x, y, w, h);
+
+          // colisão boca / objeto (apenas dentro da região do vídeo)
+          for (let i = objetos.length - 1; i >= 0; i--) {
+            let obj = objetos[i];
+            if (
+              obj.x > 0 &&
+              obj.x < videoW &&
+              obj.y > 0 &&
+              obj.y < videoH &&
+              obj.x > x &&
+              obj.x < x + w &&
+              obj.y > y &&
+              obj.y < y + h
+            ) {
+              if (obj.id === "ob_alimento") {
+                pontos += 10;
+                objetos.splice(i, 1);
+              } else if (obj.id === "ob_compostagem" || obj.id === "ob_lixo") {
+                gameOver();
+              }
+            }
+          }
+        }
+
+        // objetos que atingem o fundo do vídeo (regras)
+        for (let i = objetos.length - 1; i >= 0; i--) {
+          const obj = objetos[i];
+          if (obj.y > videoH) {
+            if (obj.id === "ob_compostagem") nivelSolo++;
+            if (obj.id === "ob_lixo") nivelSolo--;
+            if (obj.id === "ob_alimento") desperdicio += 15;
+            objetos.splice(i, 1);
+          }
+        }
+
+        mostraHUD();
+      }
+
+      // ---------- helpers / callbacks ----------
+
+      function gotFaces(results) {
+        faces = results;
+      }
+
+      // cria um objeto que usa aleatoriamente uma imagem da categoria (ou null)
+      function criaObjeto() {
+        const tipos = [
+          { id: "ob_alimento", lista: imagensAlimento },
+          { id: "ob_compostagem", lista: imagensCompostagem },
+          { id: "ob_lixo", lista: imagensLixo },
+        ];
+        const tipo = random(tipos);
+        objetos.push({
+          id: tipo.id,
+          img: random(tipo.lista), // pode ser null se falhou o load
+          x: random(videoW - 40) + 20,
+          y: 0,
+          vel: random(1.5, 3),
+        });
+      }
+
+      // clique: procura objeto próximo e anima para o lixo
+      function mousePressed() {
+        for (let i = objetos.length - 1; i >= 0; i--) {
+          const obj = objetos[i];
+          const d = dist(mouseX, mouseY, obj.x, obj.y);
+          if (d < 30) {
+            jogaNoLixoAnimado(obj);
+            objetos.splice(i, 1);
+            break;
+          }
+        }
+      }
+
+      function jogaNoLixoAnimado(obj) {
+        const destinoX = lixoX + lixoW / 2;
+        const destinoY = lixoY + lixoH - lixoPilha.length * 50 - 40;
+        animacoes.push({
+          img: obj.img,
+          id: obj.id,
+          x0: obj.x,
+          y0: obj.y,
+          x1: destinoX,
+          y1: destinoY,
+          progress: 0,
+          angulo: random(TWO_PI),
+        });
+      }
+
+      function mostraHUD() {
+        noStroke();
+        fill(255);
+        textSize(18);
+        textAlign(LEFT);
+        text(`Pontos: ${pontos}`, 420, 40);
+        text(`Desperdício: ${desperdicio}`, 420, 70);
+        text(`Nível do Solo: ${nivelSolo}`, 420, 100);
+      }
+
+      function gameOver() {
+        noLoop();
+        document.getElementById("gameover").style.display = "block";
+      }
+
+      // Desenha um placeholder simples quando a imagem não existe
+      // x,y relativos ao canvas (se x=0,y=0 em animação, será desenhado no push/pop atual)
+      function drawPlaceholder(x, y, size, id) {
+        push();
+        translate(x, y);
+        rectMode(CENTER);
+        fill(120);
+        noStroke();
+        rect(0, 0, size, size, 6);
+        fill(255);
+        textAlign(CENTER, CENTER);
+        textSize(size / 3);
+        if (id === "ob_alimento") text("A", 0, 0);
+        else if (id === "ob_compostagem") text("C", 0, 0);
+        else if (id === "ob_lixo") text("#", 0, 0);
+        else text("?", 0, 0);
+        pop();
+      }
+    </script>
+  </body>
+</html>
