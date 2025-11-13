@@ -12,8 +12,22 @@
         body {
             font-family: "Jersey 10", sans-serif;
             background-color:aquamarine;
+            font-family: "Jersey 10", sans-serif;
+            background-color: aquamarine;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrollbars */
+        }              
+            
+        #myCanvas {
+            position: fixed; /* Changed from absolute to fixed */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* Center the canvas */
+            z-index: -1; /* Put canvas behind other elements */
+            border: 2px solid #333;
         }
-
+        
         .banner {
             color: white;
             font-size: 200px;
@@ -22,7 +36,9 @@
             display: flex;
             justify-content: center;
             align-items: center;
-
+            position: relative; /* Ensure it stays above canvas */
+            z-index: 1;
+        
             width: 800px;
             height: 140px;
             background: #103D10;
@@ -35,6 +51,27 @@
                 0 8px, 8px 8px
             );
         }
+            
+            
+        #play_btn {
+            background-image: url(testImages/playBtn.png);
+            width: 250px;
+            height: 90px;
+            font-family: "Jersey 10", sans-serif;
+            color: #103D10;
+            font-size: 80px;
+            margin: 50px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: none;
+            background-color: transparent;
+            position: relative; /* Ensure it stays above canvas */
+            z-index: 1;
+        }
+        
+
+        
 
         #play_btn {
             background-image: url(testImages/playBtn.png);
@@ -51,38 +88,60 @@
             background-color: transparent;
         }
 
+        @keyframes rotate-in {
+                0% {
+                    rotate: 0deg;
+                }
+                100% {
+                    rotate: -5deg;
+            
+           }
+        }
+
+        @keyframes rotate-out {
+                0% {
+                    rotate: -15deg;
+                }
+                50%{
+                    rotate: -180deg;
+                    transform: scale(0.5);
+                }
+                100% {
+                    rotate: -360deg;
+                    transform: scale(0);
+                }
+        }
+
         #play_btn:hover{
             transform: scale(1.1);
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5)
+           
+            transition: all 0.3s ease-in-out;
+            animation: rotate-in 0.3s forwards;
         }
 
-        #play_btn::before{
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(
-                0deg, 
-                transparent, 
-                transparent 30%, 
-                rgba(0,255,255,0.3)
-            );
-            transform: rotate(-45deg);
-            transition: all 0.5s ease;
-            opacity: 0;
+
+        #play_btn:active{
+            transform: translateY(0);
         }
 
-        #play_btn::before:hover{
-            opacity: 1;
-            transform: rotate(-45deg) translateY(100%);
+
+
+        .play-btn-clicked{
+            animation: rotate-out 1s forwards ease-out; 
+            transform: scale(1.1) rotate(0deg); 
+            transition: none; 
         }
+        
              
         
     </style>
 </head>
 <body>
+    
+    <div class="banner">GREENPLAY</div>
+    <button id="play_btn">JOGAR</button>
+    <canvas id="myCanvas" class="myCanvas" width="1500" height="900"></canvas>
+
     <script>
         const canvas = document.getElementById('myCanvas')
         const ctx = canvas.getContext('2d')
@@ -92,8 +151,6 @@
         let imgArvores = new Image()
         let imgCeu = new Image() 
         let imgNuvens = new Image()
-        let playBtn = new Image()
-        let imgLogo = new Image()
         let nuvensX = 0
 
         function drawLandingPage(){
@@ -102,8 +159,6 @@
             imgArvores.src = 'assets/img/arvores.png'
             imgCeu.src = '/assets/img/ceu.png'
             imgNuvens.src = '/assets/img/nuvens.png'
-            playBtn.src = '/assets/img/PlayButton.svg'
-            imgLogo.src = '/assets/img/Logo.svg'
 
             imgCeu.onload = function() {
                 // Start animation after sky loads
@@ -129,17 +184,21 @@
             if (nuvensX >= W) {
                 nuvensX = 0
             }
-
-            ctx.drawImage(imgLogo, W/2 - 392.5, 270)
-            ctx.drawImage(playBtn, W/2 - 157, 600) 
-            
+ 
         }
 
         drawLandingPage()
 
-    </script>
+        //Evento do botão de jogar
+        const playButton = document.getElementById('play_btn');
+        playButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            playButton.classList.add('play-btn-clicked');
+            setTimeout(() => {
+                window.location.href = '/finalTest.html';
+            }, 1000); // Tempo para a animação completar
+        });
 
-    <div class="banner">GREENPLAY</div>
-    <button id="play_btn">JOGAR</button>
+    </script>
 </body>
 </html>

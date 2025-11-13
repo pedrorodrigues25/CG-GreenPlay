@@ -19,15 +19,28 @@
       #gameover {
         display: none;
         position: absolute;
-        top: 40%;
+        top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        font-size: 64px;
-        background: rgba(0, 0, 0, 0.8);
-        padding: 30px 60px;
+        background: rgba(0, 0, 0, 0.9);
+        padding: 40px 80px;
         border: 4px solid #f00;
-        color: #f00;
         border-radius: 12px;
+        text-align: center;
+      }
+      #gameover h1 {
+        font-size: 64px;
+        color: #f00;
+        margin: 0 0 30px 0;
+      }
+      #gameover .stats {
+        font-size: 32px;
+        color: #fff;
+        line-height: 1.6;
+        text-align: left;
+      }
+      #gameover .stats div {
+        margin: 10px 0;
       }
       canvas {
         border: 2px solid #333;
@@ -39,7 +52,14 @@
     </style>
   </head>
   <body>
-    <div id="gameover">GAME OVER</div>
+    <div id="gameover">
+      <h1>GAME OVER</h1>
+      <div class="stats">
+        <div>Pontos: <span id="final-pontos">0</span></div>
+        <div>Desperdício: <span id="final-desperdicio">0</span></div>
+        <div>Nível do Solo: <span id="final-nivel">0</span></div>
+      </div>
+    </div>
 
     <script>
         // ------------------- VARIÁVEIS GERAIS -------------------
@@ -127,7 +147,7 @@
                 push();
                 translate(obj.x, obj.y);
                 rotate(obj.rot);
-                if (obj.img) image(obj.img, 0, 0, 50, 50);
+                if (obj.img) image(obj.img, 0, 0, 80, 80);
                 else drawPlaceholder(0, 0, 48, obj.id);
                 pop();
                 obj.y += obj.vel;
@@ -257,6 +277,9 @@
                 progress: 0,
                 angulo: random(TWO_PI),
             });
+            if (destinoY < 400) {
+                lixoPilha.pop();
+            }
         }
 
         function mostraHUD() {
@@ -271,6 +294,9 @@
 
         function gameOver() {
             noLoop();
+            document.getElementById("final-pontos").textContent = pontos;
+            document.getElementById("final-desperdicio").textContent = desperdicio;
+            document.getElementById("final-nivel").textContent = nivelSolo;
             document.getElementById("gameover").style.display = "block";
         }
 
