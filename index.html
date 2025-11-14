@@ -5,60 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GreenPlay</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Jersey+10&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div id="greetings" >
+        <p class="banner">GREENPLAY</p>
+        <button id="play_btn">Jogar</button>
+    </div>
+    <div id="instructions" hidden>
+        <h1>Instruções</h1>
+        <h2>Diversos objetos irão cair na tela e como um cidadão que se importa com o meio ambiente e sustentabilidade, deves dar o correto destino para cada objeto</h2>
+        <div>
+            <h3>Com o sensor da boca, deves "comer" os alimentos:</h3>
+            <img src="/testImages/alimento1.png">
+            <img src="/testImages/alimento2.png">
+            <img src="/testImages/alimento3.png">
+        </div>
+        <div>
+            <h3>Com o rato deves selecionar o lixo:</h3>
+            <img src="/testImages/lixo1.png">
+            <img src="/testImages/lixo2.png">
+            <img src="/testImages/lixo3.png">
+        </div>
+        <div>
+            <h3>Deixe cair ao solo (fundo da tela) o objetos de compostagem:</h3>
+            <img src="/testImages/compostagem1.png">
+            <img src="/testImages/compostagem2.png">
+            <img src="/testImages/compostagem3.png">
+        </div>
+        <a href="/finalTest.html" id="btn">Continuar</a>
+    </div>
+
     <canvas id="myCanvas" class="myCanvas" width="1500" height="900"></canvas>
 
     <script>
         const canvas = document.getElementById('myCanvas')
         const ctx = canvas.getContext('2d')
-        const W = canvas.width , H = canvas.height
+        const W = canvas.width, H = canvas.height
 
         // Move images to global scope
         let imgArvores = new Image()
-        let imgCeu = new Image() 
+        let imgCeu = new Image()
         let imgNuvens = new Image()
         let playBtn = new Image()
         let imgLogo = new Image()
         let nuvensX = 0
 
+        // 🔥 Alternar greetings -> instructions
+        document.getElementById("play_btn").addEventListener("click", function () {
+            document.getElementById("greetings").hidden = true;
+            document.getElementById("instructions").hidden = false;
+        });
+
+        // Landing Page + animações do fundo
         function drawLandingPage(){
             ctx.clearRect(0, 0, canvas.width, canvas.height)
 
             imgArvores.src = 'assets/img/arvores.png'
             imgCeu.src = '/assets/img/ceu.png'
             imgNuvens.src = '/assets/img/nuvens.png'
-            playBtn.src = '/assets/img/PlayButton.svg'
-            imgLogo.src = '/assets/img/Logo.svg'
 
             imgCeu.onload = function() {
-                // Start animation after sky loads
                 setInterval(render, 1000/24)
             }
         }
 
         function render(){
-            // Clear canvas
             ctx.clearRect(0, 0, W, H)
-            
-            // Draw layers in order: sky, clouds, trees
+
             ctx.drawImage(imgCeu, 0, 0, W, H)
-            
-            // Draw moving clouds
+
             ctx.drawImage(imgNuvens, nuvensX, 0, W, H)
             ctx.drawImage(imgNuvens, nuvensX - W, 0, W, H)
-            
-            ctx.drawImage(imgArvores, 0, 0, W, H)
-            
-            // Update cloud position
-            nuvensX += 2
-            if (nuvensX >= W) {
-                nuvensX = 0
-            }
 
-            ctx.drawImage(imgLogo, W/2 - 392.5, 270)
-            ctx.drawImage(playBtn, W/2 - 157, 600) 
-            
+            ctx.drawImage(imgArvores, 0, 0, W, H)
+
+            nuvensX += 2
+            if (nuvensX >= W) nuvensX = 0
         }
 
         drawLandingPage()

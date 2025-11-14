@@ -8,48 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.10/p5.min.js"></script>
     <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Jersey+10&display=swap" rel="stylesheet">
-
-    <style>
-      body {
-        margin: 0;
-        overflow: hidden;
-        background-color: #87ceeb;
-        font-family: "Jersey 10", sans-serif;
-      }
-      #gameover {
-        display: none;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(0, 0, 0, 0.9);
-        padding: 40px 80px;
-        border: 4px solid #f00;
-        border-radius: 12px;
-        text-align: center;
-      }
-      #gameover h1 {
-        font-size: 64px;
-        color: #f00;
-        margin: 0 0 30px 0;
-      }
-      #gameover .stats {
-        font-size: 32px;
-        color: #fff;
-        line-height: 1.6;
-        text-align: left;
-      }
-      #gameover .stats div {
-        margin: 10px 0;
-      }
-      canvas {
-        border: 2px solid #333;
-        background-color: #d1f0c0;
-        display: block;
-        margin: 0 auto;
-        image-rendering: pixelated;
-      }
-    </style>
+    <link rel="stylesheet" href="style.css">
   </head>
   <body>
     <div id="gameover">
@@ -58,6 +17,8 @@
         <div>Pontos: <span id="final-pontos">0</span></div>
         <div>Desperdício: <span id="final-desperdicio">0</span></div>
         <div>Nível do Solo: <span id="final-nivel">0</span></div>
+        <button id="reloadBtn" onclick="location.reload()">Jogar Novamente</button>
+        <button onclick="window.location.href='/info.html'">Finalizar</button>
       </div>
     </div>
 
@@ -69,10 +30,10 @@
 
         let pontos = 0, desperdicio = 0, nivelSolo = 0;
 
-        const canvasW = 1200, canvasH = 800;
+        const canvasW = 1500, canvasH = 900;
         const videoW = 500, videoH = 725;
 
-        const lixoX = 580, lixoY = 500, lixoW = 230, lixoH = 230;
+        const lixoX = 600, lixoY = 500, lixoW = 230, lixoH = 230;
 
         let fundo, trashBack, trashImg;
         let imagensAlimento = [], imagensCompostagem = [], imagensLixo = [];
@@ -80,8 +41,8 @@
         const options = { maxFaces: 1, refineLandmarks: false, flipHorizontal: true };
 
         // ------------------- VARIÁVEIS DE COR DAS FOLHAS -------------------
-        let folhas = []; // armazena tonalidades das folhas
-        let tonalidadeBase = 140; // base inicial do verde
+        let folhas = []; 
+        let tonalidadeBase = 140;
         let ultimoNivelSolo = 0;
 
         // ------------------- PRELOAD -------------------
@@ -89,6 +50,7 @@
             faceMesh = ml5.faceMesh(options);
 
             fundo = loadImage("testImages/background.png");
+            fundoGO = loadImage("testImages/backgroundGameOver.png")
             trashBack = loadImage("testImages/trashBack.png");
             trashImg = loadImage("testImages/trash.png");
 
@@ -129,25 +91,32 @@
             stroke(100);
             rect(25, 12, videoW, videoH);
 
-            if (trashBack) image(trashBack, 700, 620, lixoW, lixoH);
+            if (trashBack) image(trashBack, 750, 700, lixoW, lixoH);
 
             // pilha do lixo
             imageMode(CENTER);
+
+            const centerX = 733;     // posição X desejada
+            const baseStart = 770;   // posição Y desejada
+
             for (let i = 0; i < lixoPilha.length; i++) {
                 const item = lixoPilha[i];
-                const baseY = lixoY + lixoH - 30 - i * 40;
-                if (item.img) image(item.img, lixoX + lixoW / 2, baseY, 40, 40);
-                else drawPlaceholder(lixoX + lixoW / 2, baseY, 40, item.id);
+                const y = baseStart - i * 20;  // cada peça sobe 40px
+
+                if (item.img)
+                    image(item.img, centerX, y, 60, 60);
+                else
+                    drawPlaceholder(centerX, y, 40, item.id);
             }
 
-            if (trashImg) image(trashImg, 700, 620, lixoW, lixoH);
+            if (trashImg) image(trashImg, 750, 700, lixoW, lixoH);
 
             // objetos caindo
             for (let obj of objetos) {
                 push();
                 translate(obj.x, obj.y);
                 rotate(obj.rot);
-                if (obj.img) image(obj.img, 0, 0, 80, 80);
+                if (obj.img) image(obj.img, 0, 0, 90, 90);
                 else drawPlaceholder(0, 0, 48, obj.id);
                 pop();
                 obj.y += obj.vel;
@@ -266,7 +235,7 @@
 
         function jogaNoLixoAnimado(obj) {
             const destinoX = lixoX + lixoW / 2;
-            const destinoY = lixoY + lixoH - lixoPilha.length * 40 - 40;
+            const destinoY = lixoY + lixoH - 100;
             animacoes.push({
                 img: obj.img,
                 id: obj.id,
@@ -277,9 +246,6 @@
                 progress: 0,
                 angulo: random(TWO_PI),
             });
-            if (destinoY < 400) {
-                lixoPilha.pop(-1);
-            }
         }
 
         function mostraHUD() {
@@ -294,6 +260,10 @@
 
         function gameOver() {
             noLoop();
+            
+            background(200);
+            if (fundo) image(fundoGO, canvasW/2, canvasH/2, canvasW, canvasH);
+
             document.getElementById("final-pontos").textContent = pontos;
             document.getElementById("final-desperdicio").textContent = desperdicio;
             document.getElementById("final-nivel").textContent = nivelSolo;
@@ -466,7 +436,7 @@
         const nivelAtual = Math.floor(nivelSolo / 3);
         if (nivelAtual !== cacheNivel || cacheGalhos.length === 0) {
             cacheGalhos = [];
-            const base = { x: 900, y: 700 };
+            const base = { x: 1100, y: 800 };
             let galhos = [
             { x: base.x, y: base.y, comprimento: 80, angulo: 90, largura: 20, nivel: 0 },
             ];
