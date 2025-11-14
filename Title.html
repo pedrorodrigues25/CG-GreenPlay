@@ -68,6 +68,7 @@
             background-color: transparent;
             position: relative; /* Ensure it stays above canvas */
             z-index: 1;
+            transition: transform 0.3s ease-in-out; /* Keep transition here */
         }
         
 
@@ -99,37 +100,33 @@
         }
 
         @keyframes rotate-out {
-                0% {
-                    rotate: -15deg;
-                }
-                50%{
-                    rotate: -180deg;
-                    transform: scale(0.5);
-                }
-                100% {
-                    rotate: -360deg;
-                    transform: scale(0);
-                }
+            0% {
+                transform: scale(1.1) rotate(0deg);
+            }
+            100% {
+                transform: scale(0) rotate(-360deg);
+            }
         }
 
         #play_btn:hover{
-            transform: scale(1.1);
-           
-            transition: all 0.3s ease-in-out;
-            animation: rotate-in 0.3s forwards;
+            transform: scale(1.1) rotate(-5deg);
         }
 
 
         #play_btn:active{
-            transform: translateY(0);
+            transform: scale(1.1) translateY(0);
+        }
+
+        .play-btn-after-click{
+            transform: scale(1);
+            transition: none; 
         }
 
 
 
         .play-btn-clicked{
-            animation: rotate-out 1s forwards ease-out; 
-            transform: scale(1.1) rotate(0deg); 
-            transition: none; 
+            animation: rotate-out 1s forwards ease-out !important;
+            transition: none !important; /* Disable transition during animation */
         }
         
              
@@ -197,6 +194,10 @@
             setTimeout(() => {
                 window.location.href = '/finalTest.html';
             }, 1000); // Tempo para a animação completar
+        });
+
+        playButton.addEventListener('animationend', () => {
+            playButton.classList.remove('play-btn-clicked');
         });
 
     </script>
